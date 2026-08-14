@@ -43,11 +43,12 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: Mpaape/AurumCode
-          # The v1 release tag is not published yet, so this demo pins the
-          # branch. A real consumer uses `ref: v1` (or the commit SHA it
-          # resolves to) — a mutable branch lets a later upstream push change
-          # what executes here.
-          ref: feat/reconstruction-board
+          # v1 is the published release tag: the contract a copied workflow
+          # relies on without editing anything. Never point this at a mutable
+          # branch — @main lets a later upstream push change what executes
+          # here. If your policy requires immutable pins, replace the tag with
+          # the commit SHA it resolves to.
+          ref: v1
           # A separate directory: the tool tree never mixes with the pull
           # request tree it is about to review.
           path: .aurumcode-tool
