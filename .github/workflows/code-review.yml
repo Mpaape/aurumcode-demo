@@ -1,0 +1,125 @@
+# AurumCode reviews every pull request opened in this repository.
+#
+# This is the security pass: it matches the pull request's added lines against
+# AurumCode's embedded rule catalog. It is deterministic and calls no model, so
+# this workflow needs no API key and no repository secret. To additionally get
+# the model-backed quality review, add LLM_API_KEY and LLM_BASE_URL as
+# repository secrets and drop the `-seguranca`-only invocation below for the
+# full `review` command documented in the AurumCode repository.
+
+name: AurumCode - Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# pull_request, never pull_request_target: the writable token stays scoped to
+# same-repository pull requests. On a pull request from a fork GitHub
+# downgrades the token to read-only and the publish step fails loudly rather
+# than green-checking a review nobody could read.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout pull request code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # Full history so AurumCode can resolve the base commit from git's
+          # object database without fetching.
+          fetch-depth: 0
+
+      - name: Checkout AurumCode
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: Mpaape/AurumCode
+          # The v1 release tag is not published yet, so this demo pins the
+          # branch. A real consumer uses `ref: v1` (or the commit SHA it
+          # resolves to) — a mutable branch lets a later upstream push change
+          # what executes here.
+          ref: feat/reconstruction-board
+          # A separate directory: the tool tree never mixes with the pull
+          # request tree it is about to review.
+          path: .aurumcode-tool
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: '1.21'
+
+      - name: Build AurumCode
+        # Built from the AurumCode tree only. The pull request's own code is
+        # never compiled and never executed: it is read as a git diff, which
+        # is what keeps a hostile pull request away from this writable token.
+        run: go build -C .aurumcode-tool -o "${RUNNER_TEMP}/aurumcode" ./cmd/aurumcode
+
+      - name: Review the pull request diff
+        id: review
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -uo pipefail
+
+          # -fail-on error is the merge gate: exit 3 means at least one
+          # error-severity finding. Any other non-zero exit means the review
+          # itself broke, which must not be reported as a clean review.
+          set +e
+          "${RUNNER_TEMP}/aurumcode" review -base "${BASE_SHA}" -seguranca -fail-on error \
+            >"${RUNNER_TEMP}/review.txt" 2>"${RUNNER_TEMP}/review.err"
+          rc=$?
+          set -e
+
+          cat "${RUNNER_TEMP}/review.err"
+          cat "${RUNNER_TEMP}/review.txt"
+
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ]; then
+            echo "::error::AurumCode exited ${rc}: the review did not complete, so this check cannot pass"
+            exit 1
+          fi
+
+          echo "rc=${rc}" >>"${GITHUB_OUTPUT}"
+
+      - name: Publish the review as a pull request comment
+        # gh is preinstalled on ubuntu-latest and authenticates from GH_TOKEN.
+        # The review text travels through --body-file, never through shell
+        # interpolation.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RC: ${{ steps.review.outputs.rc }}
+        run: |
+          set -euo pipefail
+
+          body="${RUNNER_TEMP}/comment.md"
+          {
+            printf '### AurumCode code review\n\n'
+            if [ "${RC}" = "3" ]; then
+              printf ':x: **Blocking findings** — at least one finding is severity `error`.\n\n'
+            else
+              printf ':white_check_mark: **No blocking findings** in the changed lines.\n\n'
+            fi
+            printf 'Reviewed commit `%s`.\n\n' "${HEAD_SHA}"
+            printf '```\n'
+            cat "${RUNNER_TEMP}/review.err" "${RUNNER_TEMP}/review.txt"
+            printf '```\n'
+          } >"${body}"
+
+          gh pr comment "${PR_NUMBER}" --repo "${REPO}" --body-file "${body}"
+
+      - name: Fail the check when a blocking finding is present
+        if: steps.review.outputs.rc == '3'
+        run: |
+          echo "::error::AurumCode found at least one error-severity issue in this pull request"
+          exit 1
