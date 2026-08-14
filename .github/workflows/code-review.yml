@@ -111,6 +111,11 @@ jobs:
               printf ':white_check_mark: **No blocking findings** in the changed lines.\n\n'
             fi
             printf 'Reviewed commit `%s`.\n\n' "${HEAD_SHA}"
+            # What this check does NOT cover, stated up front. A green check
+            # that reads as "this code is fine" when only the deterministic
+            # pass ran is the failure mode this comment exists to prevent.
+            printf 'Scope: the deterministic security pass over the lines this pull request **adds**. '
+            printf 'Pre-existing code is not re-reviewed, and the model-backed quality review is not configured in this repository.\n\n'
             printf '```\n'
             cat "${RUNNER_TEMP}/review.err" "${RUNNER_TEMP}/review.txt"
             printf '```\n'
