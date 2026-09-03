@@ -43,11 +43,12 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: Mpaape/AurumCode
-          # The v1 release tag is not published yet, so this demo pins the
-          # branch. A real consumer uses `ref: v1` (or the commit SHA it
-          # resolves to) — a mutable branch lets a later upstream push change
-          # what executes here.
-          ref: feat/reconstruction-board
+          # v1 is the published release tag: the contract a copied workflow
+          # relies on without editing anything. Never point this at a mutable
+          # branch — @main lets a later upstream push change what executes
+          # here. If your policy requires immutable pins, replace the tag with
+          # the commit SHA it resolves to.
+          ref: v1
           # A separate directory: the tool tree never mixes with the pull
           # request tree it is about to review.
           path: .aurumcode-tool
@@ -111,6 +112,11 @@ jobs:
               printf ':white_check_mark: **No blocking findings** in the changed lines.\n\n'
             fi
             printf 'Reviewed commit `%s`.\n\n' "${HEAD_SHA}"
+            # What this check does NOT cover, stated up front. A green check
+            # that reads as "this code is fine" when only the deterministic
+            # pass ran is the failure mode this comment exists to prevent.
+            printf 'Scope: the deterministic security pass over the lines this pull request **adds**. '
+            printf 'Pre-existing code is not re-reviewed, and the model-backed quality review is not configured in this repository.\n\n'
             printf '```\n'
             cat "${RUNNER_TEMP}/review.err" "${RUNNER_TEMP}/review.txt"
             printf '```\n'
