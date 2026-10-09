@@ -1,0 +1,9 @@
+# Repositorio consumidor do QA (AUR-512): parecer em portugues, gate por
+# severidade e changelog obrigatorio.
+review:
+  language: pt-BR
+gate:
+  fail_on: [error]
+  inconclusive: block
+changelog_check:
+  mode: required
