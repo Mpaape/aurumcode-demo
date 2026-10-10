@@ -1,0 +1,27 @@
+# QA do consumidor (AUR-512): um job de CI do proprio consumidor falha; o
+# parecer precisa citar a falha concluida (AUR-599) e nao aprovar.
+name: AurumCode
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+  checks: read
+jobs:
+  testes:
+    name: Testes do consumidor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - run: python3 -m pytest -q tests || exit 1
+  review:
+    needs: testes
+    if: always()
+    uses: Mpaape/AurumCode/.github/workflows/review.yml@9a80daf90012fdccb17af9b05001f69b6d02dd4f
+    with:
+      model: ${{ vars.LLM_MODEL }}
+    secrets:
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
