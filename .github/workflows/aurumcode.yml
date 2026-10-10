@@ -1,0 +1,17 @@
+# QA do consumidor (AUR-512): sem credencial do modelo. A revisao nao pode
+# rodar e precisa falhar fechada, com diagnostico, nunca aprovar.
+name: AurumCode
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+  checks: read
+jobs:
+  review:
+    uses: Mpaape/AurumCode/.github/workflows/review.yml@9a80daf90012fdccb17af9b05001f69b6d02dd4f
+    secrets:
+      LLM_API_KEY: ''
+      LLM_BASE_URL: ''
