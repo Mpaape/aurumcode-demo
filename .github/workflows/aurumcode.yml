@@ -1,0 +1,29 @@
+# QA do consumidor (AUR-512): Action direta pinada por SHA, com status de
+# merge. run.sh troca AURUMCODE_SHA pelo SHA sob teste.
+name: AurumCode
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: Mpaape/AurumCode@9a80daf90012fdccb17af9b05001f69b6d02dd4f
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+        with:
+          publication: comments
+          inline-comments: 'true'
+          check: 'true'
+          fail-on: error
+  changelog:
+    uses: Mpaape/AurumCode/.github/workflows/changelog.yml@9a80daf90012fdccb17af9b05001f69b6d02dd4f
