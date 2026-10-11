@@ -1,0 +1,17 @@
+# QA do consumidor (AUR-512): o endpoint do modelo nao responde (porta
+# fechada no loopback do runner). A revisao e inconclusiva e o gate reprova.
+name: AurumCode
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+  checks: read
+jobs:
+  review:
+    uses: Mpaape/AurumCode/.github/workflows/review.yml@9a80daf90012fdccb17af9b05001f69b6d02dd4f
+    secrets:
+      LLM_API_KEY: chave-de-qa-sem-valor
+      LLM_BASE_URL: http://127.0.0.1:9/v1
