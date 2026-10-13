@@ -1,0 +1,24 @@
+# QA do consumidor (AUR-512): workflow reutilizavel pinado por SHA, modo
+# comments com sugestao inline, e o changelog obrigatorio. run.sh troca
+# AURUMCODE_SHA pelo SHA sob teste antes de commitar este arquivo.
+name: AurumCode
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+  checks: read
+jobs:
+  review:
+    uses: Mpaape/AurumCode/.github/workflows/review.yml@d1990e6c8a4b6c4fd3fea65df7c944a6b16b8f8a
+    with:
+      model: ${{ vars.LLM_MODEL }}
+      publication: comments
+      inline_comments: true
+    secrets:
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+  changelog:
+    uses: Mpaape/AurumCode/.github/workflows/changelog.yml@d1990e6c8a4b6c4fd3fea65df7c944a6b16b8f8a
